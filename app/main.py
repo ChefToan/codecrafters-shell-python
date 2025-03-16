@@ -1,6 +1,8 @@
 import sys
 
 def main():
+    builtins = {"echo", "exit", "type"}
+
     while True:
         command = input("$ ")
         parts = command.strip().split()
@@ -16,6 +18,17 @@ def main():
 
         if parts and parts[0] == "echo":
             print(" ".join(parts[1:]))
+            continue
+
+        if parts and parts[0] == "type":
+            if len(parts) > 1:
+                cmd = parts[1]
+                if cmd in builtins:
+                    print(f"{cmd} is a shell builtin")
+                else:
+                    print(f"{cmd}: not found")
+            else:
+                print("type: missing argument")
             continue
 
         print(f"{command}: command not found")
