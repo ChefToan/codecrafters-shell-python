@@ -1,5 +1,5 @@
-import sys
 import os
+import sys
 
 def main():
     builtins = {"echo", "exit", "type"}
@@ -7,8 +7,11 @@ def main():
     while True:
         command = input("$ ")
         parts = command.strip().split()
-        
-        if parts and parts[0] == "exit":
+
+        if not parts:
+            continue
+
+        if parts[0] == "exit":
             exit_code = 0
             if len(parts) > 1:
                 try:
@@ -17,28 +20,30 @@ def main():
                     exit_code = 1
             sys.exit(exit_code)
 
-        if parts and parts[0] == "echo":
+        if parts[0] == "echo":
             print(" ".join(parts[1:]))
             continue
 
-        if parts and parts[0] == "type":
-            if len(parts) > 1:
-                cmd = parts[1]
-                if cmd in builtins:
-                    print(f"{cmd} is a shell builtin")
-                else:
-                    path_env = os.environ.get("PATH", "")
-                    found = False
-                    for directory in path_env.split(":"):
-                        file_path = os.path.join(directory, cmd)
-                        if os.path.isfile(file_path) and os.access(file_path, os.X_OK):
-                            print(f"{cmd} is {file_path}")
-                            found = True
-                            break
-                    if not found:
-                        print(f"{cmd}: not found")
-            else:
+        if parts[0] == "type":
+            if len(parts) < 2:
                 print("type: missing argument")
+                continue
+
+            cmd = parts[1]
+
+            if cmd in builtins:
+                print(f"{cmd} is a shell builtin")
+            else:
+                path_env = os.environ.get("PATH", "")
+                found = False
+                for directory in path_env.split(":"):
+                    file_path = os.path.join(directory, cmd)
+                    if os.path.isfile(file_path) and os.access(file_path, os.X_OK):
+                        print(f"{cmd} is {file_path}")
+                        found = True
+                        break
+                if not found:
+                    print(f"{cmd}: not found")
             continue
 
         print(f"{command}: command not found")
