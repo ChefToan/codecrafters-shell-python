@@ -14,6 +14,10 @@ def main():
                     exit_code = 1
             sys.exit(exit_code)
 
+        if parts and parts[0] == "echo":
+            print(" ".join(parts[1:]))
+            continue
+
         print(f"{command}: command not found")
 
 if __name__ == "__main__":
