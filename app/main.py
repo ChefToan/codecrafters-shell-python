@@ -52,7 +52,8 @@ def main():
             file_path = os.path.join(directory, parts[0])
             if os.path.isfile(file_path) and os.access(file_path, os.X_OK):
                 try:
-                    result = subprocess.run([file_path] + parts[1:], capture_output=True, text=True)
+                    new_args = [os.path.basename(file_path)] + parts[1:]
+                    result = subprocess.run(new_args, executable=file_path, capture_output=True, text=True)
                     if result.stdout:
                         print(result.stdout.strip())
                     executed = True
