@@ -26,7 +26,16 @@ def main():
                 if cmd in builtins:
                     print(f"{cmd} is a shell builtin")
                 else:
-                    print(f"{cmd}: not found")
+                    path_env = os.environ.get("PATH", "")
+                    found = False
+                    for directory in path_env.split(":"):
+                        file_path = os.path.join(directory, cmd)
+                        if os.path.isfile(file_path) and os.access(file_path, os.X_OK):
+                            print(f"{cmd} is {file_path}")
+                            found = True
+                            break
+                    if not found:
+                        print(f"{cmd}: not found")
             else:
                 print("type: missing argument")
             continue
