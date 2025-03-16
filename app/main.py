@@ -1,4 +1,5 @@
 import sys
+import os
 
 def main():
     builtins = {"echo", "exit", "type"}
