@@ -3,7 +3,7 @@ import sys
 import subprocess
 
 def main():
-    builtins = {"echo", "exit", "type"}
+    builtins = {"echo", "exit", "type", "pwd"}
 
     while True:
         command = input("$ ")
@@ -23,6 +23,10 @@ def main():
 
         if parts[0] == "echo":
             print(" ".join(parts[1:]))
+            continue
+
+        if parts[0] == "pwd":
+            print(os.getcwd())
             continue
 
         if parts[0] == "type":
