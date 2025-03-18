@@ -3,7 +3,7 @@ import sys
 import subprocess
 
 def main():
-    builtins = {"echo", "exit", "type", "pwd"}
+    builtins = {"echo", "exit", "type", "pwd", "cd"}
 
     while True:
         command = input("$ ")
@@ -27,6 +27,17 @@ def main():
 
         if parts[0] == "pwd":
             print(os.getcwd())
+            continue
+
+        if parts[0] == "cd":
+            if len(parts) < 2:
+                print("cd: missing argument")
+            else:
+                path = parts[1]
+                if os.path.isdir(path):
+                    os.chdir(path)
+                else:
+                    print(f"cd: {path}: No such file or directory")
             continue
 
         if parts[0] == "type":
