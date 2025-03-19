@@ -1,13 +1,18 @@
 import os
 import sys
 import subprocess
+import shlex
 
 def main():
     builtins = {"echo", "exit", "type", "pwd", "cd"}
 
     while True:
         command = input("$ ")
-        parts = command.strip().split()
+        try:
+            parts = shlex.split(command)
+        except ValueError as e:
+            print(f"Error parsing command: {e}")
+            continue
 
         if not parts:
             continue
