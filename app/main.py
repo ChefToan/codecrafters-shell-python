@@ -34,6 +34,13 @@ def main():
                 print("cd: missing argument")
             else:
                 path = parts[1]
+                if path == "~":
+                    home = os.environ.get("HOME")
+                    if home:
+                        path = home
+                    else:
+                        print("cd: HOME environment variable not set")
+                        continue
                 if os.path.isdir(path):
                     os.chdir(path)
                 else:
