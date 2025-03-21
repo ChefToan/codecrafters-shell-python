@@ -8,8 +8,11 @@ def main():
 
     while True:
         command = input("$ ")
+        # Create a shlex lexer in posix mode for proper quoting handling
+        lexer = shlex.shlex(command, posix=True)
+        lexer.whitespace_split = True
         try:
-            parts = shlex.split(command)
+            parts = list(lexer)
         except ValueError as e:
             print(f"Error parsing command: {e}")
             continue
