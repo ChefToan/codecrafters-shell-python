@@ -8,31 +8,76 @@ def main():
 
     while True:
         command = input("$ ")
-        # Create a shlex lexer in posix mode for proper quoting handling
         lexer = shlex.shlex(command, posix=True)
         lexer.whitespace_split = True
         try:
-            parts = list(lexer)
+            tokens = list(lexer)
         except ValueError as e:
             print(f"Error parsing command: {e}")
             continue
 
-        if not parts:
+        if not tokens:
             continue
 
-        # Check for output redirection operators: > or 1>
-        redir_file = None
-        for idx, token in enumerate(parts):
+        # Parse redirection operators for stdout and stderr
+        redir_stdout = None
+        redir_stderr = None
+        new_parts = []
+        i = 0
+        while i < len(tokens):
+            token = tokens[i]
             if token in (">", "1>"):
-                if idx + 1 < len(parts):
-                    redir_file = parts[idx + 1]
-                    parts = parts[:idx]
+                if i + 1 < len(tokens):
+                    redir_stdout = tokens[i+1]
+                    i += 2
+                    continue
                 else:
-                    print("Error: No file specified for redirection")
-                break
+                    err = "Error: No file specified for redirection"
+                    if redir_stderr:
+                        with open(redir_stderr, "w") as f:
+                            f.write(err + "\n")
+                    else:
+                        print(err)
+                    break
+            elif token == "2>":
+                if i + 1 < len(tokens):
+                    redir_stderr = tokens[i+1]
+                    i += 2
+                    continue
+                else:
+                    err = "Error: No file specified for redirection"
+                    if redir_stderr:
+                        with open(redir_stderr, "w") as f:
+                            f.write(err + "\n")
+                    else:
+                        print(err)
+                    break
+            else:
+                new_parts.append(token)
+                i += 1
 
-        if not parts:
+        if not new_parts:
             continue
+
+        parts = new_parts
+
+        # Helper functions to write output/errors based on redirections
+        def output_result(output):
+            if redir_stdout is not None:
+                with open(redir_stdout, "w") as f:
+                    f.write(output + "\n")
+            elif redir_stderr is not None:
+                with open(redir_stderr, "w") as f:
+                    f.write(output + "\n")
+            else:
+                print(output)
+
+        def output_error(error):
+            if redir_stderr is not None:
+                with open(redir_stderr, "w") as f:
+                    f.write(error + "\n")
+            else:
+                sys.stderr.write(error + "\n")
 
         # Process builtins and external commands
         if parts[0] == "exit":
@@ -46,25 +91,17 @@ def main():
 
         if parts[0] == "echo":
             output = " ".join(parts[1:])
-            if redir_file:
-                with open(redir_file, "w") as f:
-                    f.write(output + "\n")
-            else:
-                print(output)
+            output_result(output)
             continue
 
         if parts[0] == "pwd":
             output = os.getcwd()
-            if redir_file:
-                with open(redir_file, "w") as f:
-                    f.write(output + "\n")
-            else:
-                print(output)
+            output_result(output)
             continue
 
         if parts[0] == "cd":
             if len(parts) < 2:
-                print("cd: missing argument")
+                output_error("cd: missing argument")
             else:
                 path = parts[1]
                 if path == "~":
@@ -72,17 +109,17 @@ def main():
                     if home:
                         path = home
                     else:
-                        print("cd: HOME environment variable not set")
+                        output_error("cd: HOME environment variable not set")
                         continue
                 if os.path.isdir(path):
                     os.chdir(path)
                 else:
-                    print(f"cd: {path}: No such file or directory")
+                    output_error(f"cd: {path}: No such file or directory")
             continue
 
         if parts[0] == "type":
             if len(parts) < 2:
-                print("type: missing argument")
+                output_error("type: missing argument")
                 continue
 
             cmd = parts[1]
@@ -90,20 +127,13 @@ def main():
                 output = f"{cmd} is a shell builtin"
             else:
                 path_env = os.environ.get("PATH", "")
-                found = False
+                output = f"{cmd}: not found"
                 for directory in path_env.split(":"):
                     file_path = os.path.join(directory, cmd)
                     if os.path.isfile(file_path) and os.access(file_path, os.X_OK):
                         output = f"{cmd} is {file_path}"
-                        found = True
                         break
-                if not found:
-                    output = f"{cmd}: not found"
-            if redir_file:
-                with open(redir_file, "w") as f:
-                    f.write(output + "\n")
-            else:
-                print(output)
+            output_result(output)
             continue
 
         # External commands execution
@@ -114,21 +144,27 @@ def main():
             if os.path.isfile(file_path) and os.access(file_path, os.X_OK):
                 try:
                     new_args = [os.path.basename(file_path)] + parts[1:]
-                    result = subprocess.run(new_args, executable=file_path, capture_output=True, text=True)
-                    if redir_file:
-                        with open(redir_file, "w") as f:
+                    result = subprocess.run(new_args, executable=file_path,
+                                            capture_output=True, text=True)
+                    if redir_stdout is not None:
+                        with open(redir_stdout, "w") as f:
                             f.write(result.stdout)
                     else:
                         if result.stdout:
                             print(result.stdout.strip())
-                    if result.stderr:
-                        sys.stderr.write(result.stderr)
+                    if redir_stderr is not None:
+                        with open(redir_stderr, "w") as f:
+                            f.write(result.stderr)
+                    else:
+                        if result.stderr:
+                            sys.stderr.write(result.stderr)
                     executed = True
                 except Exception as e:
-                    print(f"Error executing {parts[0]}: {e}")
+                    output_error(f"Error executing {parts[0]}: {e}")
                 break
+
         if not executed:
-            print(f"{' '.join(parts)}: command not found")
+            output_error(f"{' '.join(parts)}: command not found")
 
 if __name__ == "__main__":
     main()
