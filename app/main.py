@@ -20,6 +20,21 @@ def main():
         if not parts:
             continue
 
+        # Check for output redirection operators: > or 1>
+        redir_file = None
+        for idx, token in enumerate(parts):
+            if token in (">", "1>"):
+                if idx + 1 < len(parts):
+                    redir_file = parts[idx + 1]
+                    parts = parts[:idx]
+                else:
+                    print("Error: No file specified for redirection")
+                break
+
+        if not parts:
+            continue
+
+        # Process builtins and external commands
         if parts[0] == "exit":
             exit_code = 0
             if len(parts) > 1:
@@ -30,11 +45,21 @@ def main():
             sys.exit(exit_code)
 
         if parts[0] == "echo":
-            print(" ".join(parts[1:]))
+            output = " ".join(parts[1:])
+            if redir_file:
+                with open(redir_file, "w") as f:
+                    f.write(output + "\n")
+            else:
+                print(output)
             continue
 
         if parts[0] == "pwd":
-            print(os.getcwd())
+            output = os.getcwd()
+            if redir_file:
+                with open(redir_file, "w") as f:
+                    f.write(output + "\n")
+            else:
+                print(output)
             continue
 
         if parts[0] == "cd":
@@ -62,20 +87,26 @@ def main():
 
             cmd = parts[1]
             if cmd in builtins:
-                print(f"{cmd} is a shell builtin")
+                output = f"{cmd} is a shell builtin"
             else:
                 path_env = os.environ.get("PATH", "")
                 found = False
                 for directory in path_env.split(":"):
                     file_path = os.path.join(directory, cmd)
                     if os.path.isfile(file_path) and os.access(file_path, os.X_OK):
-                        print(f"{cmd} is {file_path}")
+                        output = f"{cmd} is {file_path}"
                         found = True
                         break
                 if not found:
-                    print(f"{cmd}: not found")
+                    output = f"{cmd}: not found"
+            if redir_file:
+                with open(redir_file, "w") as f:
+                    f.write(output + "\n")
+            else:
+                print(output)
             continue
 
+        # External commands execution
         path_env = os.environ.get("PATH", "")
         executed = False
         for directory in path_env.split(":"):
@@ -84,8 +115,14 @@ def main():
                 try:
                     new_args = [os.path.basename(file_path)] + parts[1:]
                     result = subprocess.run(new_args, executable=file_path, capture_output=True, text=True)
-                    if result.stdout:
-                        print(result.stdout.strip())
+                    if redir_file:
+                        with open(redir_file, "w") as f:
+                            f.write(result.stdout)
+                    else:
+                        if result.stdout:
+                            print(result.stdout.strip())
+                    if result.stderr:
+                        sys.stderr.write(result.stderr)
                     executed = True
                 except Exception as e:
                     print(f"Error executing {parts[0]}: {e}")
