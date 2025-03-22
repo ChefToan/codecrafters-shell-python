@@ -20,9 +20,9 @@ def main():
         if not tokens:
             continue
 
-        # Parse redirection operators for stdout and stderr
         redir_stdout = None
         redir_stderr = None
+        append_stdout = False  # Flag for stdout append mode
         new_parts = []
         i = 0
         while i < len(tokens):
@@ -30,6 +30,16 @@ def main():
             if token in (">", "1>"):
                 if i + 1 < len(tokens):
                     redir_stdout = tokens[i + 1]
+                    append_stdout = False
+                    i += 2
+                    continue
+                else:
+                    print("Error: No file specified for redirection")
+                    break
+            elif token in (">>", "1>>"):
+                if i + 1 < len(tokens):
+                    redir_stdout = tokens[i + 1]
+                    append_stdout = True
                     i += 2
                     continue
                 else:
@@ -52,7 +62,6 @@ def main():
 
         parts = new_parts
 
-        # Ensure directories exist for redirected files
         def ensure_dir_exists(file_path):
             dir_path = os.path.dirname(file_path)
             if dir_path:
@@ -64,7 +73,6 @@ def main():
                     return False
             return True
 
-        # Process builtins and external commands
         if parts[0] == "exit":
             exit_code = 0
             if len(parts) > 1:
@@ -77,16 +85,15 @@ def main():
         if parts[0] == "echo":
             output = " ".join(parts[1:])
 
-            # Create stderr redirection file even if it will be empty
             if redir_stderr is not None:
                 ensure_dir_exists(redir_stderr)
                 with open(redir_stderr, "w") as f:
-                    pass  # Create empty file
+                    pass
 
-            # Handle stdout as before
             if redir_stdout is not None:
                 if ensure_dir_exists(redir_stdout):
-                    with open(redir_stdout, "w") as f:
+                    mode = 'a' if append_stdout else 'w'
+                    with open(redir_stdout, mode) as f:
                         f.write(output + "\n")
                 else:
                     print(output)
@@ -98,7 +105,8 @@ def main():
             output = os.getcwd()
             if redir_stdout is not None:
                 if ensure_dir_exists(redir_stdout):
-                    with open(redir_stdout, "w") as f:
+                    mode = 'a' if append_stdout else 'w'
+                    with open(redir_stdout, mode) as f:
                         f.write(output + "\n")
                 else:
                     print(output)
@@ -175,7 +183,8 @@ def main():
 
             if redir_stdout is not None:
                 if ensure_dir_exists(redir_stdout):
-                    with open(redir_stdout, "w") as f:
+                    mode = 'a' if append_stdout else 'w'
+                    with open(redir_stdout, mode) as f:
                         f.write(output + "\n")
                 else:
                     print(output)
@@ -197,7 +206,8 @@ def main():
                     # Handle stdout redirection
                     if redir_stdout is not None:
                         if ensure_dir_exists(redir_stdout):
-                            with open(redir_stdout, "w") as f:
+                            mode = 'a' if append_stdout else 'w'
+                            with open(redir_stdout, mode) as f:
                                 f.write(result.stdout)
                         else:
                             if result.stdout:
