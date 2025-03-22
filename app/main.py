@@ -76,7 +76,14 @@ def main():
 
         if parts[0] == "echo":
             output = " ".join(parts[1:])
-            # For echo, only redirect stdout if explicitly requested
+
+            # Create stderr redirection file even if it will be empty
+            if redir_stderr is not None:
+                ensure_dir_exists(redir_stderr)
+                with open(redir_stderr, "w") as f:
+                    pass  # Create empty file
+
+            # Handle stdout as before
             if redir_stdout is not None:
                 if ensure_dir_exists(redir_stdout):
                     with open(redir_stdout, "w") as f:
