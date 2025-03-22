@@ -1,3 +1,4 @@
+# python
 import os
 import sys
 import subprocess
@@ -65,9 +66,6 @@ def main():
         def output_result(output):
             if redir_stdout is not None:
                 with open(redir_stdout, "w") as f:
-                    f.write(output + "\n")
-            elif redir_stderr is not None:
-                with open(redir_stderr, "w") as f:
                     f.write(output + "\n")
             else:
                 print(output)
