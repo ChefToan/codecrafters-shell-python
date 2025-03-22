@@ -3,6 +3,7 @@ import sys
 import subprocess
 import shlex
 
+
 def main():
     builtins = {"echo", "exit", "type", "pwd", "cd"}
 
@@ -28,7 +29,7 @@ def main():
             token = tokens[i]
             if token in (">", "1>"):
                 if i + 1 < len(tokens):
-                    redir_stdout = tokens[i+1]
+                    redir_stdout = tokens[i + 1]
                     i += 2
                     continue
                 else:
@@ -36,7 +37,7 @@ def main():
                     break
             elif token == "2>":
                 if i + 1 < len(tokens):
-                    redir_stderr = tokens[i+1]
+                    redir_stderr = tokens[i + 1]
                     i += 2
                     continue
                 else:
@@ -54,33 +55,14 @@ def main():
         # Ensure directories exist for redirected files
         def ensure_dir_exists(file_path):
             dir_path = os.path.dirname(file_path)
-            if dir_path and not os.path.exists(dir_path):
+            if dir_path:
                 try:
                     os.makedirs(dir_path, exist_ok=True)
+                    return True
                 except Exception as e:
                     print(f"Error creating directory {dir_path}: {e}")
                     return False
             return True
-
-        if redir_stdout and not ensure_dir_exists(redir_stdout):
-            continue
-        if redir_stderr and not ensure_dir_exists(redir_stderr):
-            continue
-
-        # Helper functions to write output/errors based on redirections
-        def output_result(output):
-            if redir_stdout is not None:
-                with open(redir_stdout, "w") as f:
-                    f.write(output + "\n")
-            else:
-                print(output)
-
-        def output_error(error):
-            if redir_stderr is not None:
-                with open(redir_stderr, "w") as f:
-                    f.write(error + "\n")
-            else:
-                sys.stderr.write(error + "\n")
 
         # Process builtins and external commands
         if parts[0] == "exit":
@@ -94,17 +76,40 @@ def main():
 
         if parts[0] == "echo":
             output = " ".join(parts[1:])
-            output_result(output)
+            # For echo, only redirect stdout if explicitly requested
+            if redir_stdout is not None:
+                if ensure_dir_exists(redir_stdout):
+                    with open(redir_stdout, "w") as f:
+                        f.write(output + "\n")
+                else:
+                    print(output)
+            else:
+                print(output)
             continue
 
         if parts[0] == "pwd":
             output = os.getcwd()
-            output_result(output)
+            if redir_stdout is not None:
+                if ensure_dir_exists(redir_stdout):
+                    with open(redir_stdout, "w") as f:
+                        f.write(output + "\n")
+                else:
+                    print(output)
+            else:
+                print(output)
             continue
 
         if parts[0] == "cd":
             if len(parts) < 2:
-                output_error("cd: missing argument")
+                error_msg = "cd: missing argument"
+                if redir_stderr is not None:
+                    if ensure_dir_exists(redir_stderr):
+                        with open(redir_stderr, "w") as f:
+                            f.write(error_msg + "\n")
+                    else:
+                        print(error_msg, file=sys.stderr)
+                else:
+                    print(error_msg, file=sys.stderr)
             else:
                 path = parts[1]
                 if path == "~":
@@ -112,17 +117,41 @@ def main():
                     if home:
                         path = home
                     else:
-                        output_error("cd: HOME environment variable not set")
+                        error_msg = "cd: HOME environment variable not set"
+                        if redir_stderr is not None:
+                            if ensure_dir_exists(redir_stderr):
+                                with open(redir_stderr, "w") as f:
+                                    f.write(error_msg + "\n")
+                            else:
+                                print(error_msg, file=sys.stderr)
+                        else:
+                            print(error_msg, file=sys.stderr)
                         continue
                 if os.path.isdir(path):
                     os.chdir(path)
                 else:
-                    output_error(f"cd: {path}: No such file or directory")
+                    error_msg = f"cd: {path}: No such file or directory"
+                    if redir_stderr is not None:
+                        if ensure_dir_exists(redir_stderr):
+                            with open(redir_stderr, "w") as f:
+                                f.write(error_msg + "\n")
+                        else:
+                            print(error_msg, file=sys.stderr)
+                    else:
+                        print(error_msg, file=sys.stderr)
             continue
 
         if parts[0] == "type":
             if len(parts) < 2:
-                output_error("type: missing argument")
+                error_msg = "type: missing argument"
+                if redir_stderr is not None:
+                    if ensure_dir_exists(redir_stderr):
+                        with open(redir_stderr, "w") as f:
+                            f.write(error_msg + "\n")
+                    else:
+                        print(error_msg, file=sys.stderr)
+                else:
+                    print(error_msg, file=sys.stderr)
                 continue
 
             cmd = parts[1]
@@ -136,7 +165,15 @@ def main():
                     if os.path.isfile(file_path) and os.access(file_path, os.X_OK):
                         output = f"{cmd} is {file_path}"
                         break
-            output_result(output)
+
+            if redir_stdout is not None:
+                if ensure_dir_exists(redir_stdout):
+                    with open(redir_stdout, "w") as f:
+                        f.write(output + "\n")
+                else:
+                    print(output)
+            else:
+                print(output)
             continue
 
         # External commands execution
@@ -149,25 +186,55 @@ def main():
                     new_args = [os.path.basename(file_path)] + parts[1:]
                     result = subprocess.run(new_args, executable=file_path,
                                             capture_output=True, text=True)
+
+                    # Handle stdout redirection
                     if redir_stdout is not None:
-                        with open(redir_stdout, "w") as f:
-                            f.write(result.stdout)
+                        if ensure_dir_exists(redir_stdout):
+                            with open(redir_stdout, "w") as f:
+                                f.write(result.stdout)
+                        else:
+                            if result.stdout:
+                                print(result.stdout.strip())
                     else:
                         if result.stdout:
                             print(result.stdout.strip())
+
+                    # Handle stderr redirection
                     if redir_stderr is not None:
-                        with open(redir_stderr, "w") as f:
-                            f.write(result.stderr)
+                        if ensure_dir_exists(redir_stderr):
+                            with open(redir_stderr, "w") as f:
+                                f.write(result.stderr)
+                        else:
+                            if result.stderr:
+                                print(result.stderr, file=sys.stderr, end="")
                     else:
                         if result.stderr:
-                            sys.stderr.write(result.stderr)
+                            print(result.stderr, file=sys.stderr, end="")
+
                     executed = True
                 except Exception as e:
-                    output_error(f"Error executing {parts[0]}: {e}")
+                    error_msg = f"Error executing {parts[0]}: {e}"
+                    if redir_stderr is not None:
+                        if ensure_dir_exists(redir_stderr):
+                            with open(redir_stderr, "w") as f:
+                                f.write(error_msg + "\n")
+                        else:
+                            print(error_msg, file=sys.stderr)
+                    else:
+                        print(error_msg, file=sys.stderr)
                 break
 
         if not executed:
-            output_error(f"{' '.join(parts)}: command not found")
+            error_msg = f"{' '.join(parts)}: command not found"
+            if redir_stderr is not None:
+                if ensure_dir_exists(redir_stderr):
+                    with open(redir_stderr, "w") as f:
+                        f.write(error_msg + "\n")
+                else:
+                    print(error_msg, file=sys.stderr)
+            else:
+                print(error_msg, file=sys.stderr)
+
 
 if __name__ == "__main__":
     main()
