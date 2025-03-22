@@ -1,4 +1,3 @@
-# python
 import os
 import sys
 import subprocess
@@ -33,12 +32,7 @@ def main():
                     i += 2
                     continue
                 else:
-                    err = "Error: No file specified for redirection"
-                    if redir_stderr:
-                        with open(redir_stderr, "w") as f:
-                            f.write(err + "\n")
-                    else:
-                        print(err)
+                    print("Error: No file specified for redirection")
                     break
             elif token == "2>":
                 if i + 1 < len(tokens):
@@ -46,12 +40,7 @@ def main():
                     i += 2
                     continue
                 else:
-                    err = "Error: No file specified for redirection"
-                    if redir_stderr:
-                        with open(redir_stderr, "w") as f:
-                            f.write(err + "\n")
-                    else:
-                        print(err)
+                    print("Error: No file specified for redirection")
                     break
             else:
                 new_parts.append(token)
@@ -61,6 +50,22 @@ def main():
             continue
 
         parts = new_parts
+
+        # Ensure directories exist for redirected files
+        def ensure_dir_exists(file_path):
+            dir_path = os.path.dirname(file_path)
+            if dir_path and not os.path.exists(dir_path):
+                try:
+                    os.makedirs(dir_path, exist_ok=True)
+                except Exception as e:
+                    print(f"Error creating directory {dir_path}: {e}")
+                    return False
+            return True
+
+        if redir_stdout and not ensure_dir_exists(redir_stdout):
+            continue
+        if redir_stderr and not ensure_dir_exists(redir_stderr):
+            continue
 
         # Helper functions to write output/errors based on redirections
         def output_result(output):
