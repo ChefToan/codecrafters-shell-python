@@ -23,6 +23,7 @@ def main():
         redir_stdout = None
         redir_stderr = None
         append_stdout = False  # Flag for stdout append mode
+        append_stderr = False  # Flag for stderr append mode
         new_parts = []
         i = 0
         while i < len(tokens):
@@ -48,6 +49,16 @@ def main():
             elif token == "2>":
                 if i + 1 < len(tokens):
                     redir_stderr = tokens[i + 1]
+                    append_stderr = False
+                    i += 2
+                    continue
+                else:
+                    print("Error: No file specified for redirection")
+                    break
+            elif token == "2>>":
+                if i + 1 < len(tokens):
+                    redir_stderr = tokens[i + 1]
+                    append_stderr = True
                     i += 2
                     continue
                 else:
@@ -87,7 +98,8 @@ def main():
 
             if redir_stderr is not None:
                 ensure_dir_exists(redir_stderr)
-                with open(redir_stderr, "w") as f:
+                mode = 'a' if append_stderr else 'w'
+                with open(redir_stderr, mode) as f:
                     pass
 
             if redir_stdout is not None:
@@ -119,7 +131,8 @@ def main():
                 error_msg = "cd: missing argument"
                 if redir_stderr is not None:
                     if ensure_dir_exists(redir_stderr):
-                        with open(redir_stderr, "w") as f:
+                        mode = 'a' if append_stderr else 'w'
+                        with open(redir_stderr, mode) as f:
                             f.write(error_msg + "\n")
                     else:
                         print(error_msg, file=sys.stderr)
@@ -135,7 +148,8 @@ def main():
                         error_msg = "cd: HOME environment variable not set"
                         if redir_stderr is not None:
                             if ensure_dir_exists(redir_stderr):
-                                with open(redir_stderr, "w") as f:
+                                mode = 'a' if append_stderr else 'w'
+                                with open(redir_stderr, mode) as f:
                                     f.write(error_msg + "\n")
                             else:
                                 print(error_msg, file=sys.stderr)
@@ -148,7 +162,8 @@ def main():
                     error_msg = f"cd: {path}: No such file or directory"
                     if redir_stderr is not None:
                         if ensure_dir_exists(redir_stderr):
-                            with open(redir_stderr, "w") as f:
+                            mode = 'a' if append_stderr else 'w'
+                            with open(redir_stderr, mode) as f:
                                 f.write(error_msg + "\n")
                         else:
                             print(error_msg, file=sys.stderr)
@@ -161,7 +176,8 @@ def main():
                 error_msg = "type: missing argument"
                 if redir_stderr is not None:
                     if ensure_dir_exists(redir_stderr):
-                        with open(redir_stderr, "w") as f:
+                        mode = 'a' if append_stderr else 'w'
+                        with open(redir_stderr, mode) as f:
                             f.write(error_msg + "\n")
                     else:
                         print(error_msg, file=sys.stderr)
@@ -219,7 +235,8 @@ def main():
                     # Handle stderr redirection
                     if redir_stderr is not None:
                         if ensure_dir_exists(redir_stderr):
-                            with open(redir_stderr, "w") as f:
+                            mode = 'a' if append_stderr else 'w'
+                            with open(redir_stderr, mode) as f:
                                 f.write(result.stderr)
                         else:
                             if result.stderr:
@@ -233,7 +250,8 @@ def main():
                     error_msg = f"Error executing {parts[0]}: {e}"
                     if redir_stderr is not None:
                         if ensure_dir_exists(redir_stderr):
-                            with open(redir_stderr, "w") as f:
+                            mode = 'a' if append_stderr else 'w'
+                            with open(redir_stderr, mode) as f:
                                 f.write(error_msg + "\n")
                         else:
                             print(error_msg, file=sys.stderr)
@@ -245,7 +263,8 @@ def main():
             error_msg = f"{' '.join(parts)}: command not found"
             if redir_stderr is not None:
                 if ensure_dir_exists(redir_stderr):
-                    with open(redir_stderr, "w") as f:
+                    mode = 'a' if append_stderr else 'w'
+                    with open(redir_stderr, mode) as f:
                         f.write(error_msg + "\n")
                 else:
                     print(error_msg, file=sys.stderr)
