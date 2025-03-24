@@ -2,13 +2,27 @@ import os
 import sys
 import subprocess
 import shlex
-import readline  # Add readline module for tab completion
+import readline
 
 
 def completer(text, state):
-    """Provide tab completion for builtin commands"""
+    """Provide tab completion for builtin commands and executables in PATH"""
     builtins = ["echo", "exit", "type", "pwd", "cd"]
     matches = [cmd + " " for cmd in builtins if cmd.startswith(text)]
+
+    # Add executables from PATH
+    path_env = os.environ.get("PATH", "")
+    for directory in path_env.split(":"):
+        if os.path.isdir(directory):
+            try:
+                for filename in os.listdir(directory):
+                    filepath = os.path.join(directory, filename)
+                    if os.path.isfile(filepath) and os.access(filepath, os.X_OK) and filename.startswith(text):
+                        if filename + " " not in matches:
+                            matches.append(filename + " ")
+            except OSError:
+                continue
+
     return matches[state] if state < len(matches) else None
 
 
