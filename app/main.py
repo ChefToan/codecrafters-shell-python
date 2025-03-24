@@ -2,9 +2,21 @@ import os
 import sys
 import subprocess
 import shlex
+import readline  # Add readline module for tab completion
+
+
+def completer(text, state):
+    """Provide tab completion for builtin commands"""
+    builtins = ["echo", "exit", "type", "pwd", "cd"]
+    matches = [cmd + " " for cmd in builtins if cmd.startswith(text)]
+    return matches[state] if state < len(matches) else None
 
 
 def main():
+    # Set up tab completion
+    readline.parse_and_bind("tab: complete")
+    readline.set_completer(completer)
+
     builtins = {"echo", "exit", "type", "pwd", "cd"}
 
     while True:
@@ -22,8 +34,8 @@ def main():
 
         redir_stdout = None
         redir_stderr = None
-        append_stdout = False  # Flag for stdout append mode
-        append_stderr = False  # Flag for stderr append mode
+        append_stdout = False
+        append_stderr = False
         new_parts = []
         i = 0
         while i < len(tokens):
