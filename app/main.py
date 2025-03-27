@@ -5,25 +5,65 @@ import shlex
 import readline
 
 
+# Track completion state
+_last_text = None
+_tab_count = 0
+_all_matches = []
+
+
 def completer(text, state):
     """Provide tab completion for builtin commands and executables in PATH"""
-    builtins = ["echo", "exit", "type", "pwd", "cd"]
-    matches = [cmd + " " for cmd in builtins if cmd.startswith(text)]
+    global _last_text, _tab_count, _all_matches
 
-    # Add executables from PATH
-    path_env = os.environ.get("PATH", "")
-    for directory in path_env.split(":"):
-        if os.path.isdir(directory):
-            try:
-                for filename in os.listdir(directory):
-                    filepath = os.path.join(directory, filename)
-                    if os.path.isfile(filepath) and os.access(filepath, os.X_OK) and filename.startswith(text):
-                        if filename + " " not in matches:
-                            matches.append(filename + " ")
-            except OSError:
-                continue
+    # Reset counter if text changed
+    if text != _last_text:
+        _last_text = text
+        _tab_count = 0
+        _all_matches = []
 
-    return matches[state] if state < len(matches) else None
+    # Increment tab count
+    if state == 0:
+        _tab_count += 1
+
+    # Get matching commands
+    if state == 0 or not _all_matches:
+        builtins = ["echo", "exit", "type", "pwd", "cd"]
+        matches = [cmd for cmd in builtins if cmd.startswith(text)]
+
+        # Add executables from PATH
+        path_env = os.environ.get("PATH", "")
+        for directory in path_env.split(":"):
+            if os.path.isdir(directory):
+                try:
+                    for filename in os.listdir(directory):
+                        filepath = os.path.join(directory, filename)
+                        if os.path.isfile(filepath) and os.access(filepath, os.X_OK) and filename.startswith(text):
+                            if filename not in matches:
+                                matches.append(filename)
+                except OSError:
+                    continue
+
+        _all_matches = sorted(matches)
+
+    # Handle multiple matches
+    if len(_all_matches) > 1:
+        if _tab_count == 1:
+            # First tab press with multiple matches - ring bell
+            sys.stdout.write('\a')
+            sys.stdout.flush()
+            return None if state > 0 else text
+        elif _tab_count == 2 and state == 0:
+            # Second tab press - print matches
+            print()
+            print("  ".join(_all_matches))
+            print(f"$ {text}", end="")
+            return None
+
+    # Return match with space if it's a unique match
+    if state < len(_all_matches):
+        return _all_matches[state] + " "
+    else:
+        return None
 
 
 def main():
