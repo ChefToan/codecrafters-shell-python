@@ -11,6 +11,23 @@ _tab_count = 0
 _all_matches = []
 
 
+def find_longest_common_prefix(strings):
+    """Find the longest common prefix of a list of strings"""
+    if not strings:
+        return ""
+    if len(strings) == 1:
+        return strings[0]
+
+    prefix = ""
+    for i in range(min(len(s) for s in strings)):
+        char = strings[0][i]
+        if all(s[i] == char for s in strings):
+            prefix += char
+        else:
+            break
+    return prefix
+
+
 def completer(text, state):
     """Provide tab completion for builtin commands and executables in PATH"""
     global _last_text, _tab_count, _all_matches
@@ -48,10 +65,16 @@ def completer(text, state):
     # Handle multiple matches
     if len(_all_matches) > 1:
         if _tab_count == 1:
-            # First tab press with multiple matches - ring bell
-            sys.stdout.write('\a')
-            sys.stdout.flush()
-            return None if state > 0 else text
+            # First tab press with multiple matches
+            # Find longest common prefix
+            common_prefix = find_longest_common_prefix(_all_matches)
+            if common_prefix and common_prefix != text:
+                return common_prefix
+            else:
+                # No common prefix beyond what user typed - ring bell
+                sys.stdout.write('\a')
+                sys.stdout.flush()
+                return None if state > 0 else text
         elif _tab_count == 2 and state == 0:
             # Second tab press - print matches
             print()
@@ -61,7 +84,11 @@ def completer(text, state):
 
     # Return match with space if it's a unique match
     if state < len(_all_matches):
-        return _all_matches[state] + " "
+        match = _all_matches[state]
+        # Only add space if this is a complete command
+        if len(_all_matches) == 1 or not any(m.startswith(match + "_") for m in _all_matches):
+            return match + " "
+        return match
     else:
         return None
 
