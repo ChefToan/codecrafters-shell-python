@@ -62,35 +62,36 @@ def completer(text, state):
 
         _all_matches = sorted(matches)
 
-    # Handle multiple matches
-    if len(_all_matches) > 1:
-        if _tab_count == 1:
-            # First tab press with multiple matches
-            # Find longest common prefix
-            common_prefix = find_longest_common_prefix(_all_matches)
-            if common_prefix and common_prefix != text:
-                return common_prefix
-            else:
-                # No common prefix beyond what user typed - ring bell
-                sys.stdout.write('\a')
-                sys.stdout.flush()
-                return None if state > 0 else text
-        elif _tab_count == 2 and state == 0:
-            # Second tab press - print matches
-            print()
-            print("  ".join(_all_matches))
-            print(f"$ {text}", end="")
-            return None
-
-    # Return match with space if it's a unique match
-    if state < len(_all_matches):
-        match = _all_matches[state]
-        # Only add space if this is a complete command
-        if len(_all_matches) == 1 or not any(m.startswith(match + "_") for m in _all_matches):
-            return match + " "
-        return match
-    else:
+    # No matches
+    if not _all_matches:
         return None
+
+    # Single match
+    if len(_all_matches) == 1:
+        return _all_matches[0] + " " if state == 0 else None
+
+    # Multiple matches
+    common_prefix = find_longest_common_prefix(_all_matches)
+
+    # If common prefix is longer than what user typed, return it
+    if len(common_prefix) > len(text):
+        return common_prefix if state == 0 else None
+
+    # If on first tab and no better completion available
+    if _tab_count == 1:
+        sys.stdout.write('\a')
+        sys.stdout.flush()
+        return text if state == 0 else None
+
+    # On second tab, show all matches
+    if _tab_count >= 2 and state == 0:
+        print()
+        print("  ".join(_all_matches))
+        print(f"$ {text}", end="")
+        return None
+
+    # Return specific match if state is valid
+    return _all_matches[state] if state < len(_all_matches) else None
 
 
 def main():
